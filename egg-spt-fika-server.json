@@ -1,0 +1,59 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-01-22T00:00:00+00:00",
+    "name": "SPT + Fika Server",
+    "author": "badcoder1337@github.com",
+    "description": "Single Player Tarkov (SPT) server with optional Fika multiplayer mod support. Runs the SPT server backend for co-op gameplay.",
+    "features": null,
+    "docker_images": {
+        "SPT Pterodactyl": "ghcr.io/badcoder1337/fika-spt-server-docker-pterodactyl:latest"
+    },
+    "file_denylist": [],
+    "startup": "cd /home/container/SPT && ./SPT.Server.Linux",
+    "config": {
+        "files": "{}",
+        "startup": "{\"done\": \"Server has started\"}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\n# SPT + Fika Pterodactyl Installation Script\n\nset -e\n\ncd /mnt/server\n\nSPT_VERSION=\"${SPT_VERSION:-4.0.11-40087-278e72b}\"\nINSTALL_FIKA=\"${INSTALL_FIKA:-true}\"\nFIKA_VERSION=\"${FIKA_VERSION:-2.2.0}\"\n\necho \"============================================\"\necho \"SPT + Fika Server Installation\"\necho \"SPT Version: ${SPT_VERSION}\"\necho \"Install Fika: ${INSTALL_FIKA}\"\nif [ \"${INSTALL_FIKA}\" = \"true\" ]; then\n    echo \"Fika Version: ${FIKA_VERSION}\"\nfi\necho \"============================================\"\n\necho \"\"\necho \"[1/3] Downloading SPT Server v${SPT_VERSION}...\"\nSPT_URL=\"https://spt-releases.modd.in/SPT-${SPT_VERSION}.7z\"\n\nif curl -fSL \"${SPT_URL}\" -o spt.7z; then\n    echo \"[2/3] Extracting SPT Server...\"\n    7zz x spt.7z -aoa\n    rm -f spt.7z\n    \n    echo \"Extracted contents:\"\n    ls -la\n    \n    if [ -f \"SPT/SPT.Server.Linux\" ]; then\n        chmod +x SPT/SPT.Server.Linux\n        echo \"SPT Server installed successfully\"\n    else\n        echo \"ERROR: SPT.Server.Linux binary not found\"\n        find . -name \"SPT.Server.Linux\" 2>/dev/null || echo \"Binary not found\"\n        exit 1\n    fi\nelse\n    echo \"ERROR: Failed to download SPT Server from ${SPT_URL}\"\n    exit 1\nfi\n\nmkdir -p SPT/user/mods\nmkdir -p SPT/user/profiles\n\nif [ \"${INSTALL_FIKA}\" = \"true\" ]; then\n    echo \"\"\n    echo \"[3/3] Installing Fika Mod v${FIKA_VERSION}...\"\n    FIKA_URL=\"https://github.com/project-fika/Fika-Server-CSharp/releases/download/v${FIKA_VERSION}/Fika.Server.Release.${FIKA_VERSION}.zip\"\n    \n    if curl -fSL \"${FIKA_URL}\" -o fika.zip; then\n        unzip -q fika.zip -d temp_fika/\n        \n        if [ -d \"temp_fika/SPT/user/mods/fika-server\" ]; then\n            rm -rf SPT/user/mods/fika-server\n            mv temp_fika/SPT/user/mods/fika-server SPT/user/mods/\n            echo \"Fika mod installed successfully\"\n        elif [ -d \"temp_fika/user/mods/fika-server\" ]; then\n            rm -rf SPT/user/mods/fika-server\n            mv temp_fika/user/mods/fika-server SPT/user/mods/\n            echo \"Fika mod installed successfully\"\n        else\n            echo \"WARNING: Fika archive structure unexpected\"\n            find temp_fika -type d | head -20\n        fi\n        rm -rf temp_fika fika.zip\n    else\n        echo \"WARNING: Failed to download Fika\"\n    fi\nelse\n    echo \"\"\n    echo \"[3/3] Skipping Fika installation\"\nfi\n\nHTTP_JSON=\"SPT/SPT_Data/configs/http.json\"\nif [ -f \"${HTTP_JSON}\" ]; then\n    echo \"\"\n    echo \"Configuring network settings...\"\n    jq '.ip = \"0.0.0.0\" | .backendIp = \"0.0.0.0\"' \"${HTTP_JSON}\" > \"${HTTP_JSON}.tmp\" && mv \"${HTTP_JSON}.tmp\" \"${HTTP_JSON}\"\n    echo \"Network configuration complete\"\nfi\n\necho \"\"\necho \"============================================\"\necho \"Installation Complete!\"\necho \"============================================\"\nls -la SPT/ | head -15",
+            "container": "ghcr.io/badcoder1337/fika-spt-server-docker-pterodactyl:latest",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "SPT Version",
+            "description": "The SPT server version to install. Format: VERSION-BUILD-SHA (e.g., 4.0.11-40087-278e72b)",
+            "env_variable": "SPT_VERSION",
+            "default_value": "4.0.11-40087-278e72b",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string"
+        },
+        {
+            "name": "Install Fika",
+            "description": "Install the Fika multiplayer mod. Set to true or false.",
+            "env_variable": "INSTALL_FIKA",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:true,false"
+        },
+        {
+            "name": "Fika Version",
+            "description": "The Fika mod version (only if INSTALL_FIKA is true)",
+            "env_variable": "FIKA_VERSION",
+            "default_value": "2.2.0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string"
+        }
+    ]
+}
